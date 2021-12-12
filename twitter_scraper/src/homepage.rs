@@ -45,9 +45,7 @@ mod test {
 
     #[test]
     fn test_find_main_js() {
-        let mut rc = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        rc.push("resources/test/twitter_homepage.html");
-        let homepage_html = fs::read_to_string(rc.as_path()).unwrap();
+        let homepage_html = load_resource("twitter_homepage.html");
         assert_eq!(find_main_js(&homepage_html), Some("https://abs.twimg.com/responsive-web/client-web/main.4722fff5.js"));
     }
 
