@@ -4,7 +4,7 @@ function parseOutVideos(tweetDetailPayload) {
 	let videos = [];
 	const entries = tweetDetailPayload.data.threaded_conversation_with_injections.instructions
 		  .filter((instruction) => instruction.type === 'TimelineAddEntries')
-		  .reduce((entries, instruction) => [...entries, ...instruction.entries]);
+		  .reduce((entries, instruction) => [...entries, ...instruction.entries], []);
 	for (const entry of entries) {
 		if (entry.content.entryType !== 'TimelineTimelineItem') {
 			continue;
@@ -93,7 +93,7 @@ function parseOutAuthToken(mainJsContents) {
 }
 
 function findGraphQlQueryIds(mainJsContents) {
-	const re = /e.exports=\{queryId:"([a-zA-Z0-9\-]+)",operationName:"(\w+)"/g;
+	const re = /e.exports=\{queryId:"([a-zA-Z0-9\-_]+)",operationName:"(\w+)"/g;
 	const r = mainJsContents.matchAll(re);
 	let queryIds = {};
 	for (const m of r) {
@@ -195,6 +195,57 @@ class TwitterEnvironment {
 	}
 }
 
+function tweetDetail(twtrEnv, tweetId) {
+	let variables = {
+		"focalTweetId": tweetId.toString(),
+		"with_rux_injections":false,
+		"includePromotedContent":true,
+		"withCommunity":true,
+		"withQuickPromoteEligibilityTweetFields":true,
+		"withTweetQuoteCount":true,
+		"withBirdwatchNotes":false,
+		"withSuperFollowsUserFields":true,
+		"withBirdwatchPivots":false,
+		"withDownvotePerspective":false,
+		"withReactionsMetadata":false,
+		"withReactionsPerspective":false,
+		"withSuperFollowsTweetFields":true,
+		"withVoice":true,
+		"withV2Timeline":false,
+		"__fs_dont_mention_me_view_api_enabled":false
+	};
+	variables = encodeURIComponent(JSON.stringify(variables));
+	const graphQlId = twtrEnv.graphQlQueryIds['TweetDetail'];
+	return fetch(`https://twitter.com/i/api/graphql/${graphQlId}/TweetDetail?variables=${variables}`, {
+		"headers": {
+			"accept": "*/*",
+			"accept-language": "en-US,en;q=0.9",
+			"authorization": "Bearer " + twtrEnv.authToken,
+			"cache-control": "no-cache",
+			"content-type": "application/json",
+			"pragma": "no-cache",
+			"sec-fetch-dest": "empty",
+			"sec-fetch-mode": "cors",
+			"sec-fetch-site": "same-origin",
+			"sec-gpc": "1",
+			"x-csrf-token": twtrEnv.csrfToken,
+			"x-twitter-active-user": "yes",
+			"x-twitter-auth-type": "OAuth2Session",
+			"x-twitter-client-language": "en",
+			"cookie": twtrEnv.allCookies,
+			"user-agent": navigator.userAgent,
+			// TODO: add referrer
+			// TODO: add referral policy
+		},
+		"method": "GET"
+	}).then((r) => r.json()).then((r) => {
+		console.log(r);
+		const videos = parseOutVideos(r);
+		console.log(videos);
+	});
+}
+
+
 const RE_TWITTER_STATUS = /^https:\/\/twitter\.com\/\w+\/status\/(\d+).*/;
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -209,4 +260,6 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 	const te = await TwitterEnvironment.build();
 	console.info(te.json);
+	const td = await tweetDetail(te, tweetId);
+	console.info(td);
 });
