@@ -146,16 +146,19 @@ class TwitterEnvironment {
 	}
 
 	static async getAllCookies() {
-		const r = await chrome.scripting.executeScript({
-			target: { tabId: (await activeTwitterTab()).id },
-			func: () => {
-				return document.cookie;
-			}
+		const c = await chrome.cookies.getAll({
+			domain: 'twitter.com',
 		});
-		if (r.length < 1 || r[0].result == null) {
-			throw new Error();
+		let s = '';
+		let i = 0;
+		while (i < c.length) {
+			s += c[i].name + '=' + c[i].value;
+			if (++i >= c.length) {
+				break;
+			}
+			s += '; ';
 		}
-		return r[0].result;
+		return s;
 	}
 
 	static async build() {
