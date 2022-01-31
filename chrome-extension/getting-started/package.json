@@ -1,0 +1,38 @@
+{
+	"name": "twitter-video-downloader",
+	"version": "0.0.1",
+	"description": "Browser extension to download Twitter videos, even from private accounts.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "webpack --watch --config ./webpack/webpack.dev.js",
+		"build": "webpack --config ./webpack.prod.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/proprietary/twitter-video-downloader.git"
+	},
+	"keywords": [
+		"twitter",
+		"video",
+		"downloader",
+		"private",
+		"chrome",
+		"extension"
+	],
+	"author": "Zelly Snyder <zelly@outlook.com>",
+	"license": "Apache-2.0",
+	"bugs": {
+		"url": "https://github.com/proprietary/twitter-video-downloader/issues"
+	},
+	"homepage": "https://github.com/proprietary/twitter-video-downloader#readme",
+	"devDependencies": {
+		"@types/chrome": "^0.0.177",
+		"copy-webpack-plugin": "^10.2.3",
+		"ts-loader": "^9.2.6",
+		"typescript": "^4.5.5",
+		"webpack": "^5.67.0",
+		"webpack-cli": "^4.9.2",
+		"webpack-merge": "^5.8.0"
+	}
+}

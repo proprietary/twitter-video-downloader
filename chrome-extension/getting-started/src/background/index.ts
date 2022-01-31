@@ -1,3 +1,6 @@
+// TODO: store `TwitterEnvironment` in persistent storage
+// TODO: handle the case where user switches between accounts and the stored cookies are invalidated; identify the user ID logged in
+
 const RE_GRAPHQL = /https:\/\/twitter\.com\/i\/api\/graphql\/\w+\/TweetDetail\?.*/g;
 
 function parseOutVideos(tweetDetailPayload) {
@@ -25,7 +28,7 @@ function parseOutVideos(tweetDetailPayload) {
 			if (!mediaItem.hasOwnProperty('video_info')) { continue; }
 			for (const variant of mediaItem['video_info'].variants) {
 				if (variant['content_type'] === 'video/mp4') {
-					videos.push(variant.url);
+					videos.push({bitrate: variant.bitrate, contentType: variant['content_type'], url: variant.url});
 				}
 			}
 		}
@@ -39,7 +42,7 @@ function parseOutVideos(tweetDetailPayload) {
 // 	}
 // }, {urls: ["*://*.twitter.com/*"]});
 
-function activeTwitterTab() {
+function activeTwitterTab(): Promise<chrome.tabs.Tab> {
 	return new Promise((resolve, reject) => {
 		try {
 			chrome.tabs.query({
@@ -118,8 +121,9 @@ class TwitterEnvironment {
 	}
 
 	static async getMainJsUrl() {
+		const twitterTab = await activeTwitterTab();
 		const r = await chrome.scripting.executeScript({
-			target: { tabId: (await activeTwitterTab()).id  },
+			target: { tabId: twitterTab.id  },
 			func: () => {
 				try {
 					const scriptElement = Array.from(document.getElementsByTagName('script')).find(x => /^https:\/\/abs\.twimg\.com\/responsive-web\/client-web\/main\.[a-z0-9]+\.js$/.test(x.src));
@@ -196,7 +200,7 @@ class TwitterEnvironment {
 }
 
 function tweetDetail(twtrEnv, tweetId) {
-	let variables = {
+	let variables: any = {
 		"focalTweetId": tweetId.toString(),
 		"with_rux_injections":false,
 		"includePromotedContent":true,
@@ -262,4 +266,20 @@ chrome.action.onClicked.addListener(async (tab) => {
 	console.info(te.json);
 	const td = await tweetDetail(te, tweetId);
 	console.info(td);
+});
+
+chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
+	port.onMessage.addListener(async function(message, port) {
+		switch (message.type) {
+		case 'SETUP_TWITTER_ENVIRONMENT': {
+			const te = await TwitterEnvironment.build();
+			console.info(te.json);
+			port.postMessage({type: 'SAY_HELLO', payload: 'hello again'});
+			break;
+		}
+		default: {
+			console.error(`Unrecognized message passed to background: ${message}`);
+		}
+	}
+	});
 });
