@@ -1,9 +1,11 @@
 // TODO: store `TwitterEnvironment` in persistent storage
 // TODO: handle the case where user switches between accounts and the stored cookies are invalidated; identify the user ID logged in
 
+import { StorageNotFoundError, TabNotFoundError } from '../errors';
+
 const RE_GRAPHQL = /https:\/\/twitter\.com\/i\/api\/graphql\/\w+\/TweetDetail\?.*/g;
 
-function parseOutVideos(tweetDetailPayload) {
+function parseOutVideos(tweetDetailPayload): VideoItem[] {
 	let videos = [];
 	const entries = tweetDetailPayload.data.threaded_conversation_with_injections.instructions
 		  .filter((instruction) => instruction.type === 'TimelineAddEntries')
@@ -51,7 +53,7 @@ function activeTwitterTab(): Promise<chrome.tabs.Tab> {
 				url: "https://*.twitter.com/*",
 			}, (tabs) => {
 				if (tabs.length === 0) {
-					reject(new Error(`No active Twitter tabs found`));
+					reject(new TabNotFoundError('activeTwitterTab'));
 					return;
 				}
 				resolve(tabs[0]);
@@ -68,6 +70,15 @@ async function getCsrfToken() {
 		throw new Error('log into Twitter first');
 	}
 	return csrfToken;
+}
+
+/// Retrieve a user ID from cookies.
+async function getTwid() {
+	const twid = await chrome.cookies.get({'url': 'https://twitter.com', name: 'twid'});
+	if (twid == null) {
+		throw new Error('Log in to Twitter first');
+	}
+	return twid.value;	
 }
 
 async function fetchMainJsContents(mainJsUrl) {
@@ -199,7 +210,7 @@ class TwitterEnvironment {
 	}
 }
 
-function tweetDetail(twtrEnv, tweetId) {
+function tweetDetail(twtrEnv, tweetId): Promise<VideoItem[]> {
 	let variables: any = {
 		"focalTweetId": tweetId.toString(),
 		"with_rux_injections":false,
@@ -244,8 +255,9 @@ function tweetDetail(twtrEnv, tweetId) {
 		"method": "GET"
 	}).then((r) => r.json()).then((r) => {
 		console.log(r);
-		const videos = parseOutVideos(r);
+		const videos = parseOutVideos(r);		
 		console.log(videos);
+		return videos;
 	});
 }
 
@@ -268,13 +280,105 @@ chrome.action.onClicked.addListener(async (tab) => {
 	console.info(td);
 });
 
+async function retrieveTwitterEnvironment(twid: string): Promise<TwitterEnvironment> {
+	const stored: any = await (new Promise((resolve) => {
+		const key = 'TWITTER_ENVIRONMENT' + twid;
+		chrome.storage.local.get(key, (result) => {
+			resolve(result[key]);
+		});
+	}));
+	if (typeof stored === 'undefined') {
+		throw new StorageNotFoundError();
+	}
+	return TwitterEnvironment.fromJson(JSON.parse(stored));
+}
+
+async function storeTwitterEnvironment(twid: string, twtrEnv: TwitterEnvironment): Promise<void> {
+	const key = 'TWITTER_ENVIRONMENT' + twid;
+	const storeTask = new Promise((resolve) => {
+		chrome.storage.local.set({
+			[key]: JSON.stringify(twtrEnv.json),
+		}, () => {
+			resolve(undefined);
+		});
+	});
+	await storeTask;
+}
+
+interface RequestTwitterVideosPayload {}
+
+interface SetupTwitterEnvironmentPayload {}
+
+interface CompleteTwitterEnvironmentSetupPayload {}
+
+interface VideoItem {
+	bitrate: number,
+	url: string,
+	contentType: string,
+}
+
+interface ReceiveTwitterVideosPayload {
+	videos: VideoItem[],
+}
+
+type RequestTwitterVideosType = 'REQUEST_TWITTER_VIDEOS';
+type SetupTwitterEnvironmentType = 'SETUP_TWITTER_ENVIRONMENT';
+type ReceiveTwitterVideosType = 'RECEIVE_TWITTER_VIDEOS';
+type CompleteTwitterEnvironmentSetupType = 'COMPLETE_TWITTER_ENVIRONMENT_SETUP';
+
+interface Message {
+	type: ReceiveTwitterVideosType | SetupTwitterEnvironmentType | RequestTwitterVideosType | CompleteTwitterEnvironmentSetupType,
+	payload: RequestTwitterVideosPayload | SetupTwitterEnvironmentPayload | CompleteTwitterEnvironmentSetupPayload | ReceiveTwitterVideosPayload,
+}
+
 chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
-	port.onMessage.addListener(async function(message, port) {
+	port.onMessage.addListener(async function(message: Message, port) {
 		switch (message.type) {
 		case 'SETUP_TWITTER_ENVIRONMENT': {
 			const te = await TwitterEnvironment.build();
 			console.info(te.json);
-			port.postMessage({type: 'SAY_HELLO', payload: 'hello again'});
+			// Store twitter environment with a key based on user ID
+			await storeTwitterEnvironment(await getTwid(), te);
+			const response: Message = {
+				type: 'COMPLETE_TWITTER_ENVIRONMENT_SETUP',
+				payload: {},
+			};
+			port.postMessage(response);
+			break;
+		}
+		case 'REQUEST_TWITTER_VIDEOS': {
+			const twitterTab = await activeTwitterTab();
+			if (typeof twitterTab.url !== 'string' || twitterTab.url.length === 0) {
+				throw new Error();
+			}
+			const statusRegex = RE_TWITTER_STATUS.exec(twitterTab.url);
+			if (statusRegex == null || statusRegex.length < 2) {
+				return;
+			}
+			const tweetId = statusRegex[1];
+			console.log(tweetId);
+
+			const twid = await getTwid();
+			let twtrEnv: TwitterEnvironment | null = null;
+			try {
+				twtrEnv = await retrieveTwitterEnvironment(twid);
+			} catch (e) {
+				if (e instanceof StorageNotFoundError) {
+					twtrEnv = await TwitterEnvironment.build();
+				} else {
+					console.warn(`Lookup for stored Twitter Environment failed: ${e.message}`);
+					throw e;
+				}
+			}
+			const videos: VideoItem[] = await tweetDetail(twtrEnv, tweetId);
+			console.info(videos);
+			let response: Message = {
+				type: 'RECEIVE_TWITTER_VIDEOS',
+				payload: {
+					videos,
+				},
+			};
+			port.postMessage(response);
 			break;
 		}
 		default: {
