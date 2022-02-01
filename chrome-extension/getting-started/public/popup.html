@@ -2,7 +2,29 @@
 <html>
   <head>
     <meta charset="utf-8">
-	<meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <style>
+      :root {
+        --dark1: rgb(53,57,65);
+        --dark2: rgb(38,40,43);
+        --dark3: rgb(95,133,219);
+        --dark4: rgb(144,184,248);
+      }
+
+      body {
+        width: 500px;
+        background-color: white;
+        color: black;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: linear-gradient(100deg, var(--dark1), var(--dark3), var(--dark4));
+          color: white;
+        }
+      }
+
+    </style>
   </head>
   <body>
   <div id="root"></div>

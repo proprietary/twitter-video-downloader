@@ -3,6 +3,8 @@
 
 import { StorageNotFoundError, TabNotFoundError } from '../errors';
 
+import { VideoItem, RequestTwitterVideosPayload, RequestTwitterVideosType, SetupTwitterEnvironmentPayload, SetupTwitterEnvironmentType, CompleteTwitterEnvironmentSetupPayload, CompleteTwitterEnvironmentSetupType, ReceiveTwitterVideosPayload, Message} from '../abi';
+
 const RE_GRAPHQL = /https:\/\/twitter\.com\/i\/api\/graphql\/\w+\/TweetDetail\?.*/g;
 
 function parseOutVideos(tweetDetailPayload): VideoItem[] {
@@ -30,10 +32,17 @@ function parseOutVideos(tweetDetailPayload): VideoItem[] {
 			if (!mediaItem.hasOwnProperty('video_info')) { continue; }
 			for (const variant of mediaItem['video_info'].variants) {
 				if (variant['content_type'] === 'video/mp4') {
-					videos.push({bitrate: variant.bitrate, contentType: variant['content_type'], url: variant.url});
+					videos.push({
+						bitrate: variant.bitrate,
+						contentType: variant['content_type'],
+						url: variant.url,
+						posterUrl: mediaItem['media_url_https'],
+					});
 				}
 			}
 		}
+		// sort video list so that the highest quality one is first in the list
+		videos.sort((a, b) => b.bitrate - a.bitrate);
 	}
 	return videos;
 }
@@ -303,32 +312,6 @@ async function storeTwitterEnvironment(twid: string, twtrEnv: TwitterEnvironment
 		});
 	});
 	await storeTask;
-}
-
-interface RequestTwitterVideosPayload {}
-
-interface SetupTwitterEnvironmentPayload {}
-
-interface CompleteTwitterEnvironmentSetupPayload {}
-
-interface VideoItem {
-	bitrate: number,
-	url: string,
-	contentType: string,
-}
-
-interface ReceiveTwitterVideosPayload {
-	videos: VideoItem[],
-}
-
-type RequestTwitterVideosType = 'REQUEST_TWITTER_VIDEOS';
-type SetupTwitterEnvironmentType = 'SETUP_TWITTER_ENVIRONMENT';
-type ReceiveTwitterVideosType = 'RECEIVE_TWITTER_VIDEOS';
-type CompleteTwitterEnvironmentSetupType = 'COMPLETE_TWITTER_ENVIRONMENT_SETUP';
-
-interface Message {
-	type: ReceiveTwitterVideosType | SetupTwitterEnvironmentType | RequestTwitterVideosType | CompleteTwitterEnvironmentSetupType,
-	payload: RequestTwitterVideosPayload | SetupTwitterEnvironmentPayload | CompleteTwitterEnvironmentSetupPayload | ReceiveTwitterVideosPayload,
 }
 
 chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
