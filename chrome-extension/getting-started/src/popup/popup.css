@@ -1,0 +1,21 @@
+:root {
+	--twitter-color-blue: 29, 161, 242;
+	--twitter-color-black: 20, 23, 26;
+	--twitter-color-dark-gray: 101, 119, 134;
+	--twitter-color-light-gray: 170, 184, 194;
+	--twitter-color-extra-light-gray: 225, 232, 237;
+	--twitter-color-extra-extra-light-gray: 245, 248, 250;
+}
+
+body {
+	width: 500px;
+	background-color: rgb(var(--twitter-color-extra-light-gray));
+	color: rgb(var(--twitter-color-black));
+}
+
+@media (prefers-color-scheme: dark) {
+	body {
+		background: rgb(var(--twitter-color-black));
+		color: rgb(var(--twitter-color-extra-extra-light-gray));
+	}
+}

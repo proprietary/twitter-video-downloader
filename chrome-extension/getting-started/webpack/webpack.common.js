@@ -21,6 +21,11 @@ module.exports = {
 				resourceQuery: { not: [/raw/] },
 			},
 			{
+				test: /\.css$/i,
+				use: ['style-loader', 'css-loader'],
+				resourceQuery: { not: [/raw/] },
+			},
+			{
 				resourceQuery: /raw/,
 				type: 'asset/source',
 			},
