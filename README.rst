@@ -59,7 +59,7 @@ Disclaimer
 Get in touch
 ------------
 
-If you are a representative of Twitter and want me to take this down, or for any concerns, please direct message me `@zelcon <https://twitter.com/zelcon>`_ on Twitter. This is not a commercial project.
+If you are a representative of Twitter and want me to take this down, or for any concerns, please direct message me `@zelcon <https://twitter.com/zelcon>`_ on Twitter. This is not a commercial project. It adds what I think is an essential feature to Twitter's user experience, but if you want it gone, contact me first with such a request before going after the platforms this code is hosted on.
 
 If you are a user and want to report issues, you can also reach me `@zelcon <https://twitter.com/zelcon>`_.
 
