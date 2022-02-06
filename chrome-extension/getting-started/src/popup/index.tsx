@@ -1,46 +1,33 @@
-// popup.js
-
 import {h, render} from 'preact';
 import { StateUpdater, useEffect, useState } from 'preact/hooks';
-import {VideoItem, Message, RequestTwitterVideosPayload, RequestTwitterVideosType} from '../abi';
+import {VideoItem, Message, ReceiveTwitterVideosPayload, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload, RequestTwitterVideosPayload, CompleteTwitterEnvironmentSetupPayload} from '../abi';
 import './popup.css';
 
 render((<App/>), document.getElementById('root'));
 
 function App(props: any) {
 	const [videoList, updateVideoList]: [VideoItem[], StateUpdater<VideoItem[]>] = useState([]);
+	const [errorMessage, updateErrorMessage]: [string | null, StateUpdater<string | null>] = useState(null);
+	const [infoMessage, updateInfoMessage]: [string | null, StateUpdater<string | null>] = useState(null);
 	useEffect(() => {
-		const port = chrome.runtime.connect();
-		port.postMessage({
-			type: 'SETUP_TWITTER_ENVIRONMENT',
-		});
-		port.onMessage.addListener(function(msg: any, port: chrome.runtime.Port) {
-			switch (msg.type) {
-				case 'COMPLETE_TWITTER_ENVIRONMENT_SETUP': {
-					const request = {
-						type: 'REQUEST_TWITTER_VIDEOS',
-						payload: {},
-					};
-					port.postMessage(request);
-					break;
-				}
-				case 'RECEIVE_TWITTER_VIDEOS': {
-					const { videos } = msg.payload;
-					console.info(videos);
-					updateVideoList(videos);
-					break;
-				}
-				default: {
-					console.error(`Unrecognized message passed to popup.js: ${JSON.stringify(msg)}`);
-				}
-			}
-		});
+		appMessaging(updateVideoList, updateErrorMessage, updateInfoMessage);
 	}, [])
 	return (
 		<div style={{
 			margin: '1rem',
 		}}>
-			<h1>Twitter Video Downloader</h1>
+			<h1><span style={{color: 'rgb(var(--twitter-color-blue))'}}>Twitter</span> Video Downloader</h1>
+			{infoMessage != null && (
+				<div>
+					<p><strong>{infoMessage}</strong></p>
+				</div>
+			)}
+			{errorMessage != null && (
+				<div>
+					<p><strong>Error</strong>: {errorMessage}</p>
+					<p>To report this error so it gets fixed as quickly as possible, DM <a href="https://twitter.com/zelcon" target="_blank">@zelcon on Twitter</a> and copy paste the error you see above.</p>
+				</div>
+			)}
 			<div>
 				<VideoList videos={videoList} />
 			</div>
@@ -143,7 +130,7 @@ function VideoCard({video}: VideoCardProps) {
 						});
 					}}
 				>
-						<svg aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: auto; width: 20vw;"><path fill="currentColor" d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"></path></svg>
+						<svg aria-hidden="true" focusable="false" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: auto; width: 10vw;"><path fill="currentColor" d="M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z"></path></svg>
 					</a>
 				</div> 
 			</div>
@@ -159,25 +146,56 @@ interface VideoListProps {
 	videos: VideoItem[];
 }
 
-function initMessages() {
+function appMessaging(updateVideoList: StateUpdater<VideoItem[]>, updateErrorMessage: StateUpdater<string | null>, updateInfoMessage: StateUpdater<string | null>): void {
 	const port = chrome.runtime.connect();
-	port.postMessage({
+	let initialMessage: Message = {
 		type: 'SETUP_TWITTER_ENVIRONMENT',
-	});
-	port.onMessage.addListener(function(msg: any, port: chrome.runtime.Port) {
+		payload: {},
+	};
+	port.postMessage(initialMessage);
+	port.onMessage.addListener(function(msg: Message, port: chrome.runtime.Port) {
 		switch (msg.type) {
 			case 'COMPLETE_TWITTER_ENVIRONMENT_SETUP': {
-				const request = {
+				const {twtrEnv} = msg.payload as CompleteTwitterEnvironmentSetupPayload;
+				const payload: RequestTwitterVideosPayload = {
+					twtrEnv,
+				};
+				const request: Message = {
 					type: 'REQUEST_TWITTER_VIDEOS',
-					payload: {},
+					payload,
 				};
 				port.postMessage(request);
 				break;
 			}
 			case 'RECEIVE_TWITTER_VIDEOS': {
-				const { videos } = msg.payload;
-				console.info(videos);
-				document.getElementById('root').textContent = JSON.stringify(videos, null, 4);
+				const payload = msg.payload as ReceiveTwitterVideosPayload;
+				const { videos } = payload;
+				updateVideoList(videos);
+				port.disconnect();
+				break;
+			}
+			case 'RECEIVE_ERROR_MESSAGE': {
+				const payload = msg.payload as ReceiveErrorMessagePayload;
+				console.error(`Error ${payload.errorName || ''}: ${payload.errorMessage || ''}`);
+				updateErrorMessage(payload.errorMessage);
+				port.disconnect();
+				break;
+			}
+			case 'RECEIVE_INFO_MESSAGE': {
+				const payload = msg.payload as ReceiveInfoMessagePayload;
+				switch (payload.name) {
+				case 'TabNotFoundError': {
+					updateInfoMessage(`This tab isn't a Twitter post.`);
+					break;
+				}
+				case 'TwitterNotLoggedInError': {
+					updateInfoMessage(`Log in to Twitter first.`);
+					break;
+				}
+				default:
+					throw new Error(`unrecognized info message:  ${payload.name}`);
+				}
+				port.disconnect();
 				break;
 			}
 			default: {
