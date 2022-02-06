@@ -1,6 +1,6 @@
-import { StorageNotFoundError, TabNotFoundError, TwitterNotLoggedInError, TwitterWebAppBreakingChangeError } from '../errors';
+import { TabNotFoundError, TwitterNotLoggedInError, TwitterWebAppBreakingChangeError } from '../errors';
 
-import { VideoItem, RequestTwitterVideosPayload, RequestTwitterVideosType, SetupTwitterEnvironmentPayload, SetupTwitterEnvironmentType, CompleteTwitterEnvironmentSetupPayload, CompleteTwitterEnvironmentSetupType, ReceiveTwitterVideosPayload, Message, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload} from '../abi';
+import { VideoItem, RequestTwitterVideosPayload, Message, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload} from '../abi';
 
 const RE_GRAPHQL = /https:\/\/twitter\.com\/i\/api\/graphql\/\w+\/TweetDetail\?.*/g;
 

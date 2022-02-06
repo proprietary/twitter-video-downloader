@@ -6,7 +6,7 @@
 	"background": {
 		"service_worker": "background.js"
 	},
-	"permissions": ["storage", "activeTab", "scripting", "cookies", "tabs"],
+	"permissions": ["storage", "activeTab", "scripting", "cookies"],
 	"host_permissions": ["*://*.twitter.com/*", "*://twitter.com/*"],
 	"action": {
 		"default_popup": "popup.html",
