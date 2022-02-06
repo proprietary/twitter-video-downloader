@@ -96,9 +96,6 @@ function VideoCard({video}: VideoCardProps) {
 				{video.bitrate > 0 && (<div>Quality: {bitrateBlock}</div>)}
 				<div>
 					<a
-					style={{
-						color: 'white',
-					}}
 					href={video.url}
 					target="_blank"
 					title="Open in  new tab">
@@ -108,7 +105,7 @@ function VideoCard({video}: VideoCardProps) {
 				<div>
 					<a
 					href={video.url}
-					style={{color: 'white', textDecoration: 'none'}}
+					style={{textDecoration: 'none'}}
 					title="Download video"
 					onClick={async (e) => {
 						e.preventDefault();

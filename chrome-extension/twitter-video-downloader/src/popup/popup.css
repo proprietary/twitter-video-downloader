@@ -13,6 +13,10 @@ body {
 	color: rgb(var(--twitter-color-black));
 }
 
+a {
+	color: inherit;
+}
+
 @media (prefers-color-scheme: dark) {
 	body {
 		background: rgb(var(--twitter-color-black));
