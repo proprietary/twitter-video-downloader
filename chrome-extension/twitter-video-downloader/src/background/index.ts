@@ -454,13 +454,25 @@ chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
 				const {twtrEnv} = message.payload as RequestTwitterVideosPayload;
 				const te: TwitterEnvironment = await TwitterEnvironment.init(twtrEnv);
 				const videos: VideoItem[] = await tweetDetail(te, tweetId);
-				let response: Message = {
-					type: 'RECEIVE_TWITTER_VIDEOS',
-					payload: {
-						videos,
-					},
-				};
-				port.postMessage(response);
+				if (videos.length === 0) {
+					const payload: ReceiveInfoMessagePayload = {
+						name: 'VideosNotFound',
+						message: 'No videos found on this post',
+					};
+					const response: Message = {
+						type: 'RECEIVE_INFO_MESSAGE',
+						payload,
+					};
+					port.postMessage(response);
+				} else {
+					let response: Message = {
+						type: 'RECEIVE_TWITTER_VIDEOS',
+						payload: {
+							videos,
+						},
+					};
+					port.postMessage(response);
+				}
 			} catch (e) {
 				if (e instanceof TwitterWebAppBreakingChangeError) {
 					const response: Message = {

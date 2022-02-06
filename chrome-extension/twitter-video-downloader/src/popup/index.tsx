@@ -18,8 +18,8 @@ function App(props: any) {
 		}}>
 			<h1><span style={{color: 'rgb(var(--twitter-color-blue))'}}>Twitter</span> Video Downloader</h1>
 			{infoMessage != null && (
-				<div>
-					<p><strong>{infoMessage}</strong></p>
+				<div style={{fontSize: '1.5em'}}>
+					<p>{infoMessage}</p>
 				</div>
 			)}
 			{errorMessage != null && (
@@ -182,15 +182,20 @@ function appMessaging(updateVideoList: StateUpdater<VideoItem[]>, updateErrorMes
 				const payload = msg.payload as ReceiveInfoMessagePayload;
 				switch (payload.name) {
 				case 'TabNotFoundError': {
-					updateInfoMessage(`This tab isn't a Twitter post.`);
+					updateInfoMessage(`ℹ️ This tab isn't a Twitter post`);
 					break;
 				}
 				case 'TwitterNotLoggedInError': {
-					updateInfoMessage(`Log in to Twitter first.`);
+					updateInfoMessage(`ℹ️ Log in to Twitter first`);
+					break;
+				}
+				case 'VideosNotFound': {
+					updateInfoMessage(`ℹ️ No videos found here`);
 					break;
 				}
 				default:
-					throw new Error(`unrecognized info message:  ${payload.name}`);
+					console.warn(`unrecognized info message:  ${payload.name}`);
+					updateInfoMessage(`ℹ️ ${payload.message}`);
 				}
 				port.disconnect();
 				break;
