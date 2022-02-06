@@ -62,7 +62,6 @@ function activeTwitterTab(): Promise<chrome.tabs.Tab> {
 			}, (tabs) => {
 				if (tabs.length === 0) {
 					const e = new TabNotFoundError('activeTwitterTab');
-					console.assert(e.constructor.name === 'TabNotFoundError');
 					reject(e);
 					return;
 				}
@@ -415,9 +414,8 @@ chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
 				port.postMessage(response);
 			} catch (e) {
 				if (e instanceof TabNotFoundError) {
-					console.assert(e.constructor.name === 'TabNotFoundError');
 					const payload: ReceiveInfoMessagePayload = {
-						name: e.constructor.name,
+						name: 'TabNotFoundError',
 					};
 					const message: Message = {
 						type: 'RECEIVE_INFO_MESSAGE',
@@ -427,7 +425,7 @@ chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
 				} else {
 					console.error(`Lookup for Twitter Environment fails: ${e.message}`);
 					const payload: ReceiveErrorMessagePayload = {
-						errorName: e.constructor.name,
+						errorName: undefined,
 						errorMessage: e.message,
 					};
 					const message: Message = {
@@ -484,27 +482,25 @@ chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
 					};
 					port.postMessage(response);
 				} else if (e instanceof TwitterNotLoggedInError) {
-					console.assert(e.constructor.name === 'TwitterNotLoggedInError');
 					const response: Message = {
 						type: 'RECEIVE_INFO_MESSAGE',
 						payload: {
-							name: e.name,
+							name: 'TwitterNotLoggedInError',
 						},
 					};
 					port.postMessage(response);
 				} else if (e instanceof TabNotFoundError) {
-					console.assert(e.constructor.name === 'TabNotFoundError');
 					const response: Message = {
 						type: 'RECEIVE_INFO_MESSAGE',
 						payload: {
-							name: e.name,
+							name: 'TabNotFoundError',
 						},
 					};
 					port.postMessage(response);
 				} else {
 					console.error(e);
 					const payload: ReceiveErrorMessagePayload = {
-						errorName: e.constructor.name,
+						errorName: null,
 						errorMessage: e.message,
 					};
 					const response: Message = {

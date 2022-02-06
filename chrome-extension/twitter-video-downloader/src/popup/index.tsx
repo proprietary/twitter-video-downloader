@@ -1,6 +1,7 @@
 import {h, render} from 'preact';
 import { StateUpdater, useEffect, useState } from 'preact/hooks';
 import {VideoItem, Message, ReceiveTwitterVideosPayload, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload, RequestTwitterVideosPayload, CompleteTwitterEnvironmentSetupPayload} from '../abi';
+import { TabNotFoundError } from '../errors';
 import './popup.css';
 
 render((<App/>), document.getElementById('root'));
@@ -10,7 +11,7 @@ function App(props: any) {
 	const [errorMessage, updateErrorMessage]: [string | null, StateUpdater<string | null>] = useState(null);
 	const [infoMessage, updateInfoMessage]: [string | null, StateUpdater<string | null>] = useState(null);
 	useEffect(() => {
-		appMessaging(updateVideoList, updateErrorMessage, updateInfoMessage);
+		return appMessaging(updateVideoList, updateErrorMessage, updateInfoMessage);
 	}, [])
 	return (
 		<div style={{
@@ -65,6 +66,7 @@ function VideoCard({video}: VideoCardProps) {
 	} else {
 		bitrateBlock = (<>{mbps} mb/s</>);
 	}
+	const videoFilename = video.url.split('/').pop().split('?')[0];
 	return (
 		<div style={{
 			display: 'flex',
@@ -107,16 +109,16 @@ function VideoCard({video}: VideoCardProps) {
 					href={video.url}
 					style={{textDecoration: 'none'}}
 					title="Download video"
-					onClick={async (e) => {
+ 					onClick={async (e) => {
 						e.preventDefault();
 						fetch(video.url).then((r) => r.blob()).then((blob) => {
 							// force browser to give a download prompt
 							const fr = new FileReader();
 							fr.addEventListener('load', () => {
-								const a = document.createElement('a');
 								if (typeof fr.result !== 'string') {
 									throw new Error();
 								}
+								const a = document.createElement('a');
 								a.href = fr.result as string;
 								a.download = video.url.split('/').pop().split('?')[0];
 								document.body.appendChild(a);
@@ -143,7 +145,7 @@ interface VideoListProps {
 	videos: VideoItem[];
 }
 
-function appMessaging(updateVideoList: StateUpdater<VideoItem[]>, updateErrorMessage: StateUpdater<string | null>, updateInfoMessage: StateUpdater<string | null>): void {
+function appMessaging(updateVideoList: StateUpdater<VideoItem[]>, updateErrorMessage: StateUpdater<string | null>, updateInfoMessage: StateUpdater<string | null>): () => void {
 	const port = chrome.runtime.connect();
 	let initialMessage: Message = {
 		type: 'SETUP_TWITTER_ENVIRONMENT',
@@ -205,4 +207,7 @@ function appMessaging(updateVideoList: StateUpdater<VideoItem[]>, updateErrorMes
 			}
 		}
 	});
+	return () => {
+		port.disconnect();
+	}
 }

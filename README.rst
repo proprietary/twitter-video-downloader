@@ -36,7 +36,7 @@ Build from source
   $ git clone https://github.com/proprietary/twitter-video-downloader
   $ cd twitter-video-downloader/chrome-extension/twitter-video-downloader
   $ npm install
-  $ npm build
+  $ npm run build
 
 Then, in Chrome:
 
