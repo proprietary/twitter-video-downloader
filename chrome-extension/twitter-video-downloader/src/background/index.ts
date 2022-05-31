@@ -276,7 +276,7 @@ class TwitterEnvironment {
 	}
 }
 
-function tweetDetail(twtrEnv: TwitterEnvironment, tweetId): Promise<VideoItem[]> {
+function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string): Promise<VideoItem[]> {
 	let variables: any = {
 		"focalTweetId": tweetId.toString(),
 		"with_rux_injections":false,
@@ -293,14 +293,21 @@ function tweetDetail(twtrEnv: TwitterEnvironment, tweetId): Promise<VideoItem[]>
 		"withSuperFollowsTweetFields":true,
 		"withVoice":true,
 		"withV2Timeline":false,
-		"__fs_dont_mention_me_view_api_enabled":false
+	};
+	let features: any = {
+		"dont_mention_me_view_api_enabled": true,
+		"interactive_text_enabled": true,
+		"responsive_web_uc_gql_enabled": false,
+		"vibe_tweet_context_enabled": false,
+		"responsive_web_edit_tweet_api_enabled": false
 	};
 	variables = encodeURIComponent(JSON.stringify(variables));
+	features = encodeURIComponent(JSON.stringify(features));
 	const graphQlId = twtrEnv.graphQlQueryIds['TweetDetail'];
 	if (typeof graphQlId === 'undefined') {
 		throw new TwitterWebAppBreakingChangeError(`Unable to find "TweetDetail" in Graph QL query list.`);
 	}
-	return fetch(`https://twitter.com/i/api/graphql/${graphQlId}/TweetDetail?variables=${variables}`, {
+	return fetch(`https://twitter.com/i/api/graphql/${graphQlId}/TweetDetail?variables=${variables}&features=${features}`, {
 		"headers": {
 			"accept": "*/*",
 			"accept-language": "en-US,en;q=0.9",
@@ -318,8 +325,8 @@ function tweetDetail(twtrEnv: TwitterEnvironment, tweetId): Promise<VideoItem[]>
 			"x-twitter-client-language": "en",
 			"cookie": twtrEnv.allCookies,
 			"user-agent": navigator.userAgent,
-			// TODO: add referrer
-			// TODO: add referral policy
+			"referer": `https://twitter.com/{tweetUsername}/status/{tweetId}`,
+			"referrer-policy": "strict-origin-when-cross-origin",
 		},
 		"method": "GET"
 	}).then((r) => {
@@ -333,7 +340,7 @@ function tweetDetail(twtrEnv: TwitterEnvironment, tweetId): Promise<VideoItem[]>
 	});
 }
 
-const RE_TWITTER_STATUS = /^https:\/\/twitter\.com\/\w+\/status\/(\d+).*/;
+const RE_TWITTER_STATUS = /^https:\/\/twitter\.com\/(\w+)\/status\/(\d+).*/;
 
 chrome.action.onClicked.addListener(async (tab) => {
 	console.log('clicked while on url: ' + tab.url);
@@ -341,13 +348,14 @@ chrome.action.onClicked.addListener(async (tab) => {
 	if (statusRegex == null || statusRegex.length < 2) {
 		return;
 	}
-	const tweetId = statusRegex[1];
+	const tweetUsername = statusRegex[1];
+	const tweetId = statusRegex[2];
 	console.log(tweetId);
 	console.log(JSON.stringify(tweetId));
 
 	const te = await TwitterEnvironment.build();
 	console.info(te.json);
-	const td = await tweetDetail(te, tweetId);
+	const td = await tweetDetail(te, tweetId, tweetUsername);
 	console.info(td);
 });
 
@@ -444,14 +452,15 @@ chrome.runtime.onConnect.addListener(function(port: chrome.runtime.Port) {
 					throw new TabNotFoundError();
 				}
 				const statusRegex = RE_TWITTER_STATUS.exec(twitterTab.url);
-				if (statusRegex == null || statusRegex.length < 2) {
+				if (statusRegex == null || statusRegex.length < 3) {
 					throw new TabNotFoundError();
 				}
-				const tweetId = statusRegex[1];
+				const tweetUsername = statusRegex[1];
+				const tweetId = statusRegex[2];
 
 				const {twtrEnv} = message.payload as RequestTwitterVideosPayload;
 				const te: TwitterEnvironment = await TwitterEnvironment.init(twtrEnv);
-				const videos: VideoItem[] = await tweetDetail(te, tweetId);
+				const videos: VideoItem[] = await tweetDetail(te, tweetId, tweetUsername);
 				if (videos.length === 0) {
 					const payload: ReceiveInfoMessagePayload = {
 						name: 'VideosNotFound',
