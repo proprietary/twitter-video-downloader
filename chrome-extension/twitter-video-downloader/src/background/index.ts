@@ -279,27 +279,28 @@ class TwitterEnvironment {
 function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string): Promise<VideoItem[]> {
 	let variables: any = {
 		"focalTweetId": tweetId.toString(),
-		"with_rux_injections":false,
-		"includePromotedContent":true,
-		"withCommunity":true,
-		"withQuickPromoteEligibilityTweetFields":true,
-		"withTweetQuoteCount":true,
-		"withBirdwatchNotes":false,
-		"withSuperFollowsUserFields":true,
-		"withBirdwatchPivots":false,
-		"withDownvotePerspective":false,
-		"withReactionsMetadata":false,
-		"withReactionsPerspective":false,
-		"withSuperFollowsTweetFields":true,
-		"withVoice":true,
-		"withV2Timeline":false,
+		"with_rux_injections": false,
+		"includePromotedContent": true,
+		"withCommunity": true,
+		"withQuickPromoteEligibilityTweetFields": true,
+		"withTweetQuoteCount": true,
+		"withBirdwatchNotes": false,
+		"withSuperFollowsUserFields": true,
+		"withBirdwatchPivots": false,
+		"withDownvotePerspective": false,
+		"withReactionsMetadata": false,
+		"withReactionsPerspective": false,
+		"withSuperFollowsTweetFields": true,
+		"withVoice": true,
+		"withV2Timeline": false,
 	};
 	let features: any = {
 		"dont_mention_me_view_api_enabled": true,
 		"interactive_text_enabled": true,
 		"responsive_web_uc_gql_enabled": false,
 		"vibe_tweet_context_enabled": false,
-		"responsive_web_edit_tweet_api_enabled": false
+		"responsive_web_edit_tweet_api_enabled": false,
+		"standardized_nudges_for_misinfo_nudges_enabled": false,
 	};
 	variables = encodeURIComponent(JSON.stringify(variables));
 	features = encodeURIComponent(JSON.stringify(features));
@@ -325,7 +326,7 @@ function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string
 			"x-twitter-client-language": "en",
 			"cookie": twtrEnv.allCookies,
 			"user-agent": navigator.userAgent,
-			"referer": `https://twitter.com/{tweetUsername}/status/{tweetId}`,
+			"referer": `https://twitter.com/${tweetUsername}/status/${tweetId}`,
 			"referrer-policy": "strict-origin-when-cross-origin",
 		},
 		"method": "GET"
