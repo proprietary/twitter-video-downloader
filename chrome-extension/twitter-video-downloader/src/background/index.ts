@@ -301,6 +301,7 @@ function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string
 		"vibe_tweet_context_enabled": false,
 		"responsive_web_edit_tweet_api_enabled": false,
 		"standardized_nudges_for_misinfo_nudges_enabled": false,
+		"responsive_web_enhance_cards_enabled": true,
 	};
 	variables = encodeURIComponent(JSON.stringify(variables));
 	features = encodeURIComponent(JSON.stringify(features));
