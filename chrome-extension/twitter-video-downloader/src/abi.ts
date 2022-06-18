@@ -23,6 +23,12 @@ export interface VideoItem {
 	url: string;
 	contentType: string;
 	posterUrl: string;
+	aspectRatio: AspectRatio;
+}
+
+export interface AspectRatio {
+	x: number,
+	y: number,
 }
 
 export interface ReceiveTwitterVideosPayload {

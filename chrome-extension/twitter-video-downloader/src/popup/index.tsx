@@ -96,6 +96,7 @@ function VideoCard({video}: VideoCardProps) {
 				justifyContent: 'space-evenly',
 			}}>
 				{video.bitrate > 0 && (<div>Quality: {bitrateBlock}</div>)}
+				<div>Aspect ratio: {video.aspectRatio.x} x {video.aspectRatio.y}</div>
 				<div>
 					<a
 					href={video.url}

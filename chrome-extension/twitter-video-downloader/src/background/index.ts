@@ -1,47 +1,35 @@
 import { TabNotFoundError, TwitterNotLoggedInError, TwitterWebAppBreakingChangeError } from '../errors';
-
-import { VideoItem, RequestTwitterVideosPayload, Message, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload} from '../abi';
-
-const RE_GRAPHQL = /https:\/\/twitter\.com\/i\/api\/graphql\/\w+\/TweetDetail\?.*/g;
+import { findStructure } from './findStructure';
+import { VideoItem, RequestTwitterVideosPayload, Message, ReceiveErrorMessagePayload, ReceiveInfoMessagePayload, AspectRatio} from '../abi';
 
 function parseOutVideos(tweetDetailPayload: any): VideoItem[] {
 	let videos = [];
 	try {
-		const entries = tweetDetailPayload.data.threaded_conversation_with_injections.instructions
-			.filter((instruction: any) => instruction.type === 'TimelineAddEntries')
-			.reduce((entries: any, instruction: any) => [...entries, ...instruction.entries], []);
-		for (const entry of entries) {
-			if (entry.content.entryType !== 'TimelineTimelineItem') {
-				continue;
-			}
-			const itemContent = entry.content.itemContent;
-			if (itemContent.itemType !== 'TimelineTweet') {
-				continue;
-			}
-			if (itemContent.tweet_results == null || itemContent.tweet_results.result == null) throw new Error();
-			if (itemContent.tweet_results.result.__typename !== 'Tweet') {
-				continue;
-			}
-			if (itemContent.tweet_results.result.legacy.hasOwnProperty('extended_entities') === false) {
-				continue;
-			}
-			const media = itemContent.tweet_results.result.legacy['extended_entities'].media;
-			for (const mediaItem of media) {
-				if (!mediaItem.hasOwnProperty('video_info')) { continue; }
-				for (const variant of mediaItem['video_info'].variants) {
-					if (variant['content_type'] === 'video/mp4') {
-						videos.push({
-							bitrate: variant.bitrate,
-							contentType: variant['content_type'],
-							url: variant.url,
-							posterUrl: mediaItem['media_url_https'],
-						});
-					}
+		let results = findStructure(tweetDetailPayload, (obj) => typeof obj['type'] !== 'undefined' && obj['type'] === 'video');
+		if (results == null) {
+			throw new TwitterWebAppBreakingChangeError('failure to parse video details propertly anymore');
+		}
+		console.info(results);
+		for (let mediaItem of results) {
+			if (!mediaItem.hasOwnProperty('video_info')) { continue; }
+			const aspectRatio: AspectRatio = {
+				x: mediaItem['video_info']['aspect_ratio'][0],
+				y: mediaItem['video_info']['aspect_ratio'][1],
+			};
+			for (const variant of mediaItem['video_info']['variants']) {
+				if (variant['content_type'] === 'video/mp4') {
+					videos.push({
+						bitrate: variant['bitrate'],
+						contentType: variant['content_type'],
+						url: variant['url'],
+						posterUrl: variant['media_url_https'],
+						aspectRatio,
+					});
 				}
 			}
-			// sort video list so that the highest quality one is first in the list
-			videos.sort((a, b) => b.bitrate - a.bitrate);
 		}
+		// sort by bitrate, descending
+		videos = videos.sort((a, b) => b.bitrate - a.bitrate);
 		return videos;
 	} catch (e) {
 		if (e instanceof TypeError) {
@@ -277,34 +265,8 @@ class TwitterEnvironment {
 }
 
 function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string): Promise<VideoItem[]> {
-	let variables: any = {
-		"focalTweetId": tweetId.toString(),
-		"with_rux_injections": false,
-		"includePromotedContent": true,
-		"withCommunity": true,
-		"withQuickPromoteEligibilityTweetFields": true,
-		"withTweetQuoteCount": true,
-		"withBirdwatchNotes": false,
-		"withSuperFollowsUserFields": true,
-		"withBirdwatchPivots": false,
-		"withDownvotePerspective": false,
-		"withReactionsMetadata": false,
-		"withReactionsPerspective": false,
-		"withSuperFollowsTweetFields": true,
-		"withVoice": true,
-		"withV2Timeline": false,
-	};
-	let features: any = {
-		"dont_mention_me_view_api_enabled": true,
-		"interactive_text_enabled": true,
-		"responsive_web_uc_gql_enabled": false,
-		"vibe_tweet_context_enabled": false,
-		"responsive_web_edit_tweet_api_enabled": false,
-		"standardized_nudges_for_misinfo_nudges_enabled": false,
-		"responsive_web_enhance_cards_enabled": true,
-	};
-	variables = encodeURIComponent(JSON.stringify(variables));
-	features = encodeURIComponent(JSON.stringify(features));
+	let variables: any = encodeURIComponent(JSON.stringify({"focalTweetId": tweetId.toString(),"with_rux_injections":false,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withBirdwatchNotes":false,"withSuperFollowsUserFields":true,"withDownvotePerspective":false,"withReactionsMetadata":false,"withReactionsPerspective":false,"withSuperFollowsTweetFields":true,"withVoice":true,"withV2Timeline":true}));
+	let features: any = encodeURIComponent(JSON.stringify({"dont_mention_me_view_api_enabled":true,"interactive_text_enabled":true,"responsive_web_uc_gql_enabled":false,"vibe_tweet_context_enabled":false,"responsive_web_edit_tweet_api_enabled":false,"standardized_nudges_misinfo":false,"responsive_web_enhance_cards_enabled":false}));
 	const graphQlId = twtrEnv.graphQlQueryIds['TweetDetail'];
 	if (typeof graphQlId === 'undefined') {
 		throw new TwitterWebAppBreakingChangeError(`Unable to find "TweetDetail" in Graph QL query list.`);
