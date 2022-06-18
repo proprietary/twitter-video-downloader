@@ -1,6 +1,6 @@
 {
 	"name": "twitter-video-downloader",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Browser extension to download Twitter videos, even from private accounts.",
 	"main": "index.js",
 	"scripts": {
