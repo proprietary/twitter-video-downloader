@@ -265,8 +265,10 @@ class TwitterEnvironment {
 }
 
 function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string): Promise<VideoItem[]> {
-	let features: any = encodeURIComponent(JSON.stringify({"dont_mention_me_view_api_enabled":true,"interactive_text_enabled":true,"responsive_web_uc_gql_enabled":false,"vibe_api_enabled":false,"responsive_web_edit_tweet_api_enabled":false,"standardized_nudges_misinfo":true,"responsive_web_enhance_cards_enabled":false}));
-	let variables: any = encodeURIComponent(JSON.stringify({"focalTweetId": tweetId.toString(),"with_rux_injections":false,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withBirdwatchNotes":false,"withSuperFollowsUserFields":true,"withDownvotePerspective":false,"withReactionsMetadata":false,"withReactionsPerspective":false,"withSuperFollowsTweetFields":true,"withVoice":true,"withV2Timeline":true}));
+	let rawFeatures: any = {"dont_mention_me_view_api_enabled":true,"interactive_text_enabled":true,"responsive_web_uc_gql_enabled":true,"vibe_api_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":false,"responsive_web_enhance_cards_enabled":false};
+	let rawVariables: any = {"focalTweetId": tweetId.toString(),"with_rux_injections":false,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withBirdwatchNotes":false,"withSuperFollowsUserFields":true,"withDownvotePerspective":false,"withReactionsMetadata":false,"withReactionsPerspective":false,"withSuperFollowsTweetFields":true,"withVoice":true,"withV2Timeline":true};
+	let features: any = encodeURIComponent(JSON.stringify(rawFeatures));
+	let variables: any = encodeURIComponent(JSON.stringify(rawVariables));
 	const graphQlId = twtrEnv.graphQlQueryIds['TweetDetail'];
 	if (typeof graphQlId === 'undefined') {
 		throw new TwitterWebAppBreakingChangeError(`Unable to find "TweetDetail" in Graph QL query list.`);
