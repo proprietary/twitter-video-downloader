@@ -87,7 +87,7 @@ async function fetchMainJsContents(mainJsUrl) {
 }
 
 function parseOutAuthToken(mainJsContents) {
-	const re = /"Web-12",s="([a-zA-Z0-9%]+)"/g;
+	const re = /"Web-12",\w="([a-zA-Z0-9%]+)"/g;
 	const r = re.exec(mainJsContents);
 	if (r == null || r.length < 2) {
 		throw new TwitterWebAppBreakingChangeError('failure to find auth token in main.xxxxx.js');
