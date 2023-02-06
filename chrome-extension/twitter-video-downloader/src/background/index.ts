@@ -87,7 +87,7 @@ async function fetchMainJsContents(mainJsUrl) {
 }
 
 function parseOutAuthToken(mainJsContents) {
-	const re = /"Web-12",\w="([a-zA-Z0-9%]+)"/g;
+	const re = /"(AAAAAAA[a-zA-Z0-9%]+)"/g;
 	const r = re.exec(mainJsContents);
 	if (r == null || r.length < 2) {
 		throw new TwitterWebAppBreakingChangeError('failure to find auth token in main.xxxxx.js');
@@ -95,10 +95,10 @@ function parseOutAuthToken(mainJsContents) {
 	return r[1];
 }
 
-function findGraphQlQueryIds(mainJsContents): GraphQLQueryIdMapping {
-	const re = /e.exports=\{queryId:"([a-zA-Z0-9\-_]+)",operationName:"(\w+)"/g;
-	const r = mainJsContents.matchAll(re);
-	let queryIds: GraphQLQueryIdMapping = {};
+function findGraphQlQueryIds(endpointScript): GraphQlQueryIdMapping {
+	const re = /queryId:"([a-zA-Z0-9\-_]+)",operationName:"(\w+)"/g;
+	const r = endpointScript.matchAll(re);
+	let queryIds: GraphQlQueryIdMapping = {};
 	for (const m of r) {
 		queryIds[m[2]] = m[1];
 	}
@@ -114,14 +114,14 @@ function parseOutMainJsVersion(mainJsUrl: string): string {
 	return m[1];
 }
 
-interface GraphQLQueryIdMapping {
+interface GraphQlQueryIdMapping {
 	[queryId: string]: string;
 }
 
 interface TwitterEnvironmentStorageForm {
 	mainJsUrl: string;
 	authToken: string;
-	graphQlQueryIds: GraphQLQueryIdMapping;
+	graphQlQueryIds: GraphQlQueryIdMapping;
 }
 
 interface TwitterEnvironmentProps {
@@ -129,7 +129,7 @@ interface TwitterEnvironmentProps {
 	authToken: string;
 	mainJsUrl: string;
 	allCookies: string;
-	graphQlQueryIds: GraphQLQueryIdMapping;
+	graphQlQueryIds: GraphQlQueryIdMapping;
 }
 
 /// Contains all the necessary information to process API requests on Twitter.
@@ -138,7 +138,7 @@ class TwitterEnvironment {
 	public authToken: string;
 	public mainJsUrl: string;
 	private allCookies_: string;
-	public graphQlQueryIds: GraphQLQueryIdMapping;
+	public graphQlQueryIds: GraphQlQueryIdMapping;
 
 	private constructor({mainJsUrl, authToken, graphQlQueryIds, csrfToken, allCookies}: TwitterEnvironmentProps) {
 		this.mainJsUrl = mainJsUrl;
@@ -160,10 +160,68 @@ class TwitterEnvironment {
 		const mainJsUrl = await TwitterEnvironment.getMainJsUrl();
 		const mainJsContents = await fetchMainJsContents(mainJsUrl);
 		const authToken = parseOutAuthToken(mainJsContents);
-		const graphQlQueryIds = findGraphQlQueryIds(mainJsContents);
+		const graphQlQueryIds = await TwitterEnvironment.getGraphQlQueryIds();
 		const csrfToken = await TwitterEnvironment.getCsrfToken();
 		const allCookies = await TwitterEnvironment.getAllCookies();
 		return new TwitterEnvironment({mainJsUrl, authToken, graphQlQueryIds, allCookies, csrfToken});
+	}
+
+	/// Retrieves the version numbers (a hex string like b39aff9a0) that comes after the name of a script (e.g., "endpoints.Conversation.b39aff9a0.js"). These scripts contain the GraphQL endpoints to make requests at Twitter's private API.
+	static async getEndpointScriptVersions(): Promise<any> {
+		try {
+			const twitterTab = await activeTwitterTab();
+			const r = await chrome.scripting.executeScript({
+				target: { tabId: twitterTab.id },
+				func: () => {
+					let endpointScriptVersions = {};
+					const re = /"endpoints.([A-Za-z]+)":"([a-z0-9]+)"/g;
+					try {
+						const everyScriptElement = Array.from(document.getElementsByTagName('script'));
+						for (const scriptElement of everyScriptElement) {
+							let res;
+							while ((res = re.exec(scriptElement.innerHTML)) !== null) {
+								endpointScriptVersions[res[1]] = res[2];
+							}
+						}
+						return { error: null, payload: endpointScriptVersions };
+					} catch (e) {
+						return { error: e.message, payload: null };
+					}
+				},
+			});
+			if (r.length < 1 || r[0].result == null) {
+				throw new TwitterWebAppBreakingChangeError(`Failure to locate version numbers [xxxxxx] for scripts named "endpoints.Conversation.xxxxxx.js"`);
+			}
+			const t = r[0].result;
+			if (t.error != null) {
+				throw new TwitterWebAppBreakingChangeError(`Failure to locate version numbers [xxxxxx] for scripts named e.g., "endpoints.Conversation.xxxxxx.js": ${t.error}`);
+			}
+			console.log(t.payload);
+			return t.payload;
+		} catch (e) {
+			throw e;
+		}
+	}
+
+	static async getGraphQlQueryIds(): Promise<GraphQlQueryIdMapping> {
+		const scriptVersions = await TwitterEnvironment.getEndpointScriptVersions();
+		const endpointsConversationVersion = scriptVersions['Conversation'];
+		const conversationEndpointsUrl = `https://abs.twimg.com/responsive-web/client-web/endpoints.Conversation.${endpointsConversationVersion}a.js`;
+		const r = await fetch(conversationEndpointsUrl, {
+			"referrer": "https://twitter.com/",
+			"referrerPolicy": "strict-origin-when-cross-origin",
+			"body": null,
+			"method": "GET",
+			"mode": "cors",
+			"credentials": "omit"
+		});
+		if (Math.floor(r.status / 100) !== 2) {
+			throw new Error(`Fetching endpoints.Conversation.${endpointsConversationVersion}.js fails with status code: ${r.status}`);
+		}
+		let endpointsConversationContents = await r.text();
+		let out = findGraphQlQueryIds(endpointsConversationContents);
+		console.log(out);
+		return out;
 	}
 
 	static async getMainJsUrl(): Promise<string> {
@@ -265,8 +323,8 @@ class TwitterEnvironment {
 }
 
 function tweetDetail(twtrEnv: TwitterEnvironment, tweetId, tweetUsername: string): Promise<VideoItem[]> {
-	let rawFeatures: any = {"responsive_web_twitter_blue_verified_badge_is_enabled":true,"verified_phone_label_enabled":false,"responsive_web_graphql_timeline_navigation_enabled":true,"unified_cards_ad_metadata_container_dynamic_card_content_query_enabled":true,"tweetypie_unmention_optimization_enabled":true,"responsive_web_uc_gql_enabled":true,"vibe_api_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":false,"interactive_text_enabled":true,"responsive_web_text_conversations_enabled":false,"responsive_web_enhance_cards_enabled":true};
-	let rawVariables: any = {"focalTweetId": tweetId.toString(),"with_rux_injections":false,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withBirdwatchNotes":false,"withSuperFollowsUserFields":true,"withDownvotePerspective":false,"withReactionsMetadata":false,"withReactionsPerspective":false,"withSuperFollowsTweetFields":true,"withVoice":true,"withV2Timeline":true};
+	let rawVariables: any = {"focalTweetId":tweetId.toString(),"with_rux_injections":false,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withBirdwatchNotes":true,"withSuperFollowsUserFields":true,"withDownvotePerspective":false,"withReactionsMetadata":false,"withReactionsPerspective":false,"withSuperFollowsTweetFields":true,"withVoice":true,"withV2Timeline":true};
+	let rawFeatures: any = {"responsive_web_twitter_blue_verified_badge_is_enabled":true,"verified_phone_label_enabled":false,"responsive_web_graphql_timeline_navigation_enabled":true,"longform_notetweets_consumption_enabled":true,"tweetypie_unmention_optimization_enabled":true,"vibe_api_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"freedom_of_speech_not_reach_appeal_label_enabled":false,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":false,"interactive_text_enabled":true,"responsive_web_text_conversations_enabled":false,"responsive_web_enhance_cards_enabled":false};
 	let features: any = encodeURIComponent(JSON.stringify(rawFeatures));
 	let variables: any = encodeURIComponent(JSON.stringify(rawVariables));
 	const graphQlId = twtrEnv.graphQlQueryIds['TweetDetail'];
