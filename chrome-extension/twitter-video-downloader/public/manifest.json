@@ -1,7 +1,7 @@
 {
 	"name": "Twitter Video Downloader",
 	"description": "Click a button to download a video on a Twitter post, even on private profiles.",
-	"version": "1.0.15",
+	"version": "1.0.16",
 	"manifest_version": 3,
 	"background": {
 		"service_worker": "background.js"
