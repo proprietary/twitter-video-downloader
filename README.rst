@@ -26,7 +26,9 @@ Install
 Chrome Web Store
 ~~~~~~~~~~~~~~~~
 
-TODO
+Warning: May be outdated as Chrome Web Store takes time to approve
+
+`Install from Chrome Web Store <https://chrome.google.com/webstore/detail/twitter-video-downloader/dhfimdgkaolieflclblgaeokakkedjnk>`_
 
 Build from source
 ~~~~~~~~~~~~~~~~~
