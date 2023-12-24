@@ -1,12 +1,13 @@
 {
 	"name": "twitter-video-downloader",
-	"version": "1.0.20",
+	"version": "1.0.21",
 	"description": "Browser extension to download Twitter videos, even from private accounts.",
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "webpack --watch --config ./webpack/webpack.dev.js",
-		"build": "webpack --config ./webpack/webpack.prod.js"
+		"build": "webpack --config ./webpack/webpack.prod.js",
+        "package": "(cd dist; zip extension.zip ./*)"
 	},
 	"repository": {
 		"type": "git",
