@@ -7,7 +7,7 @@
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"start": "webpack --watch --config ./webpack/webpack.dev.js",
 		"build": "webpack --config ./webpack/webpack.prod.js",
-        "package": "(cd dist; zip extension.zip ./*)"
+        "package": "(cd dist; zip -r extension.zip ./*)"
 	},
 	"repository": {
 		"type": "git",
